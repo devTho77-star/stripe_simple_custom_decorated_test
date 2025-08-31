@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Custom Stripe Checkout</title>
+  <script src="https://js.stripe.com/v3/"></script>
+  <style>
+    body {
+      font-family: 'Arial', sans-serif;
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      color: #fff;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+    }
+    .checkout-container {
+      background: #fff;
+      color: #333;
+      padding: 40px;
+      border-radius: 15px;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+      width: 350px;
+      text-align: center;
+    }
+    h1 {
+      margin-bottom: 20px;
+    }
+    #card-element {
+      border: 1px solid #ccc;
+      padding: 12px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+    }
+    button {
+      background: #667eea;
+      color: #fff;
+      padding: 12px 20px;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      cursor: pointer;
+      width: 100%;
+    }
+    button:hover {
+      background: #5a67d8;
+    }
+    #message {
+      margin-top: 20px;
+      color: red;
+      min-height: 20px;
+    }
+  </style>
+</head>
+<body>
+  <div class="checkout-container">
+    <h1>Subscribe Now</h1>
+    <p>Get access to premium features for just $50</p>
+    <form id="payment-form">
+      <div id="card-element"></div>
+      <button type="submit">Pay $50</button>
+      <div id="message"></div>
+    </form>
+  </div>
+
+  <script>
+    const stripe = Stripe("pk_test_51S1OAH3pBglTeA0mBud6ByC3NIv6nMTrQ4ITBQ1h1GDTBX5ygMuoeCVeBZdF1Jy5wmQq819Xbd4kKRjZ3aJJcDfu00dGiF5MC6"); // Your Stripe publishable key
+
+    const elements = stripe.elements();
+    const card = elements.create("card", { style: {
+      base: {
+        fontSize: '16px',
+        color: '#32325d',
+        '::placeholder': { color: '#a0aec0' }
+      },
+      invalid: { color: '#fa755a' }
+    }});
+    card.mount("#card-element");
+
+    const form = document.getElementById("payment-form");
+    const message = document.getElementById("message");
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      message.textContent = "";
+
+      const res = await fetch("/.netlify/functions/create-payment-intent", {
+        method: "POST",
+      });
+      const data = await res.json();
+
+      if (data.error) {
+        message.textContent = data.error;
+        return;
+      }
+
+      const result = await stripe.confirmCardPayment(data.clientSecret, {
+        payment_method: { card },
+      });
+
+      if (result.error) {
+        message.textContent = result.error.message;
+      } else if (result.paymentIntent && result.paymentIntent.status === "succeeded") {
+        message.textContent = "Payment succeeded!";
+      }
+    });
+  </script>
+</body>
+</html>
